@@ -1,9 +1,11 @@
 package com.techelevator.tenmo.dao;
 
 import com.techelevator.tenmo.model.Account;
+import com.techelevator.tenmo.model.Transfer;
 import com.techelevator.tenmo.model.User;
 import com.techelevator.tenmo.model.Username;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface UserDao {
@@ -19,4 +21,10 @@ public interface UserDao {
     boolean create(String username, String password);
 
     Account retrieveBalance(String username);
+
+    boolean createTransfer(BigDecimal amount, String from, String to);
+
+    Transfer createTransfer(Transfer transfer);
+
+    Transfer createTransfer(Transfer transfer, Account account);
 }

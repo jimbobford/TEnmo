@@ -1,21 +1,25 @@
 package com.techelevator.tenmo.dao;
 
 import com.techelevator.tenmo.model.Account;
+import com.techelevator.tenmo.model.Transfer;
 import com.techelevator.tenmo.model.User;
 import com.techelevator.tenmo.model.Username;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
 public class JdbcUserDao implements UserDao {
-
+    private final String TRANSFER_SELECT = "SELECT transfer_id, transfer_amount, from_username, to_username FROM transfer" +
     private JdbcTemplate jdbcTemplate;
 
     public JdbcUserDao(JdbcTemplate jdbcTemplate) {
@@ -124,5 +128,115 @@ public class JdbcUserDao implements UserDao {
         Username username = new Username();
         username.setUsername(rs.getString("username"));
         return username;
+    }
+
+
+    @Override
+    public boolean createTransfer(BigDecimal amount, String from, String to) {
+
+        String sql = "INSERT INTO transfer (transfer_amount, from_username, to_username) VALUES (?, ?, ?) RETURNING transfer_id";
+        Integer newTransferId;
+        try {
+            newTransferId = jdbcTemplate.queryForObject(sql, Integer.class, amount, from, to);
+        } catch (DataAccessException e) {
+            return false;
+        }
+
+        String accountSql = "INSERT INTO account (user_id, balance) VALUES (?, ?)";
+
+        int rowsInserted = jdbcTemplate.update(accountSql, newTransferId, 1000);
+
+        return true;
+    }
+
+    @Override
+    public Transfer getTransferById(int transferId) {
+        Transfer transfer = null;
+        String sql = "SELECT transfer_id, transfer_amount, from_username, to_username FROM transfer"+
+                " WHERE e.employee_id=?";
+        try{
+            SqlRowSet results = jdbcTemplate.queryForRowSet(sql, id);
+            if (results.next()) {
+                employee = mapRowToEmployee(results);
+            }
+        } catch (CannotGetJdbcConnectionException e){
+            throw new DaoException("Unable to connect to server or database", e);
+        }
+        return employee;
+    }
+
+    @Override
+    public Transfer createTransfer(Transfer transfer, Account account) {
+        Transfer newTransfer = null;
+        int newTransferId = 0;
+        String sql = "INSERT INTO transfer (transfer_amount, from_username, to_username) VALUES (?, ?, ?) RETURNING transfer_id";
+        try{
+            newTransferId = jdbcTemplate.queryForObject(sql,int.class, transfer.getTransferAmount(), transfer.getFrom(),
+                    transfer.getTo());
+
+            if(transfer.getFrom().equals(transfer.getTo())) {
+                throw new DataIntegrityViolationException("Please select a new person to receive money.");
+            }
+            if(transfer.getTransferAmount().compareTo(account.getBalance())==1) {
+                throw new DataIntegrityViolationException("Insufficient funds.");
+            }
+            if(transfer.getTransferAmount().compareTo(BigDecimal.ZERO)==-1) {
+                throw new DataIntegrityViolationException("Can't send less than $0.00.");
+            }
+        } catch (CannotGetJdbcConnectionException e){
+//            throw new DaoException("Unable to connect to server or database", e);
+            System.out.println("Unable to connect to server or database");
+        } catch (DataIntegrityViolationException e){
+//            throw new DaoException("Data integrity violation", e);
+            System.out.println("Unable to connect to server or database");
+        }
+
+        String sqlFrom = "UPDATE account\n" +
+                "SET account_id = \n" +
+                "(SELECT account_id FROM account JOIN tenmo_user ON account.user_id = tenmo_user.user_id WHERE username = ?), \n" +
+                "SET user_id =\n" +
+                "(SELECT user_id FROM user WHERE username = ?), \n" +
+                "SET balance = balance - ?;";
+        try{
+            int rowsAffected = jdbcTemplate.update(sqlFrom,transfer.getFrom(),transfer.getFrom(),transfer.getTransferAmount());
+            if(rowsAffected == 0){
+//                throw new DaoException("Zero rows affected, expected at least one");
+                System.out.println("Zero rows affected, expected at least one");
+//            } else {
+////                newTransfer = getEmployeeById(employee.getId());
+            }
+        } catch (CannotGetJdbcConnectionException e){
+//            throw new DaoException("Unable to connect to server or database", e);
+            System.out.println("Unable to connect to server or database");
+        } catch (DataIntegrityViolationException e){
+//            throw new DaoException("Data integrity violation", e);
+            System.out.println("Unable to connect to server or database");
+        }
+
+        String sqlTo = "UPDATE account\n" +
+                "SET account_id = \n" +
+                "(SELECT account_id FROM account JOIN tenmo_user ON account.user_id = tenmo_user.user_id WHERE username = ?), \n" +
+                "SET user_id =\n" +
+                "(SELECT user_id FROM user WHERE username = ?), \n" +
+                "SET balance = balance + ?;";
+
+        try{
+            int rowsAffected = jdbcTemplate.update(sqlTo,transfer.getTo(),transfer.getTo(),transfer.getTransferAmount());
+            if(rowsAffected == 0){
+//                throw new DaoException("Zero rows affected, expected at least one");
+                System.out.println("Zero rows affected, expected at least one");
+            } else {
+                newTransfer = getTransferById(newTransferId);
+            }
+        } catch (CannotGetJdbcConnectionException e){
+//            throw new DaoException("Unable to connect to server or database", e);
+            System.out.println("Unable to connect to server or database");
+        } catch (DataIntegrityViolationException e){
+//            throw new DaoException("Data integrity violation", e);
+            System.out.println("Unable to connect to server or database");
+        }
+
+//		throw new DaoException("createEmployee() not implemented");
+        return newTransfer;
     }
 }

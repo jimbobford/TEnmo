@@ -2,14 +2,15 @@ package com.techelevator.tenmo.controller;
 
 import com.techelevator.tenmo.dao.UserDao;
 import com.techelevator.tenmo.model.Account;
+import com.techelevator.tenmo.model.Transfer;
 import com.techelevator.tenmo.model.User;
 import com.techelevator.tenmo.model.Username;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.security.Principal;
 import java.util.List;
 
@@ -29,6 +30,16 @@ public class AppController {
     public List<Username> usersList (){
         return userDao.findAllUsers();
     }
+
+    @ResponseStatus(HttpStatus.CREATED)
+    @RequestMapping(path= "/transfer", method = RequestMethod.POST)
+    public Transfer transferMoney (@RequestBody Transfer transfer){
+        return userDao.createTransfer(transfer);
+    }
+
+
+
+
 
 
 

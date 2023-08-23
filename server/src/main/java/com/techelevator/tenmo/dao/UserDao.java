@@ -22,9 +22,7 @@ public interface UserDao {
 
     Account retrieveBalance(String username);
 
-    boolean createTransfer(BigDecimal amount, String from, String to);
+    Transfer getTransferById(int transferId);
 
     Transfer createTransfer(Transfer transfer);
-
-    Transfer createTransfer(Transfer transfer, Account account);
 }

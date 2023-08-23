@@ -41,11 +41,11 @@ CREATE SEQUENCE seq_transfer_id
 CREATE TABLE transfer (
 	transfer_id int NOT NULL DEFAULT nextval('seq_transfer_id'),
 	transfer_amount numeric(13, 2) NOT NULL,
-	from_user_id int NOT NULL,
-	to_user_id int NOT NULL,
+	from_username varchar NOT NULL,
+	to_username varchar NOT NULL,
 	CONSTRAINT PK_transfer PRIMARY KEY (transfer_id),
-	CONSTRAINT FK_transfer_from FOREIGN KEY (from_user_id) REFERENCES tenmo_user (user_id),
-	CONSTRAINT FK_transfer_to FOREIGN KEY (to_user_id) REFERENCES tenmo_user (user_id)
-);
+	CONSTRAINT FK_transfer_from FOREIGN KEY (from_username) REFERENCES tenmo_user (username),
+	CONSTRAINT FK_transfer_to FOREIGN KEY (to_username) REFERENCES tenmo_user (username)
+	);
 
 COMMIT;

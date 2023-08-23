@@ -22,6 +22,8 @@ public class Username {
 
     @Override
     public String toString() {
-        return "username : " + username;
+        return "Username{" +
+                "username='" + username + '\'' +
+                '}';
     }
 }

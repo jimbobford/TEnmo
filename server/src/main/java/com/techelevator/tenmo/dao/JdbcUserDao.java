@@ -19,7 +19,7 @@ import java.util.List;
 
 @Component
 public class JdbcUserDao implements UserDao {
-    private final String TRANSFER_SELECT = "SELECT transfer_id, transfer_amount, from_username, to_username FROM transfer ";
+    private final String TRANSFER_SELECT = "SELECT transfer_id, transfer_amount, from_user_id, to_user_id FROM transfer ";
     private JdbcTemplate jdbcTemplate;
 
     public JdbcUserDao(JdbcTemplate jdbcTemplate) {
@@ -35,6 +35,18 @@ public class JdbcUserDao implements UserDao {
         } else {
             return -1;
         }
+    }
+
+    @Override
+    public String findUsernameById(int id) {
+        String sql = "SELECT username FROM tenmo_user WHERE user_id = ?;";
+        String username = jdbcTemplate.queryForObject(sql,String.class,id);
+        if(username != null) {
+            return username;
+        } else {
+            return null;
+        }
+
     }
 
     @Override
@@ -134,8 +146,10 @@ public class JdbcUserDao implements UserDao {
         Transfer transfer = new Transfer();
         transfer.setTransferId(rs.getInt("transfer_id"));
         transfer.setTransferAmount(rs.getBigDecimal("transfer_amount"));
-        transfer.setFrom(rs.getString("from_username"));
-        transfer.setTo(rs.getString("to_username"));
+        transfer.setFrom(rs.getInt(findIdByUsername(transfer.getUsernameFrom())));
+        transfer.setTo(rs.getInt(findIdByUsername(transfer.getUsernameTo())));
+        transfer.setUsernameFrom(findUsernameById(transfer.getFrom()));
+        transfer.setUsernameTo(findUsernameById(transfer.getTo()));
         return transfer;
     }
 
@@ -161,10 +175,10 @@ public class JdbcUserDao implements UserDao {
         Account account = null;
         Transfer newTransfer = null;
         int newTransferId = 0;
-        String sql = "INSERT INTO transfer (transfer_amount, from_username, to_username) " +
-                "VALUES (?, ?, ?) " +
+        String sql = "INSERT INTO transfer (transfer_amount, from_user_id, to_user_id, status) " +
+                "VALUES (?, (SELECT user_id FROM tenmo_user WHERE username = ?), (SELECT user_id FROM tenmo_user WHERE username = ?), 1) " +
                 "RETURNING transfer_id";
-        if(transfer.getFrom().equals(transfer.getTo())) {
+        if(transfer.getUsernameFrom().equals(transfer.getUsernameTo())) {
             throw new DataIntegrityViolationException("Please select a new person to receive money.");
         }
 
@@ -181,8 +195,8 @@ public class JdbcUserDao implements UserDao {
         }
 
         try {
-            newTransferId = jdbcTemplate.queryForObject(sql,int.class, transfer.getTransferAmount(), transfer.getFrom(),
-                    transfer.getTo());
+            newTransferId = jdbcTemplate.queryForObject(sql,int.class, transfer.getTransferAmount(), transfer.getUsernameFrom(),
+                    transfer.getUsernameTo());
 
         } catch (CannotGetJdbcConnectionException e) {
             System.out.println ("Unable to connect to server or database");
@@ -213,8 +227,8 @@ public class JdbcUserDao implements UserDao {
                 " JOIN tenmo_user ON account.user_id = tenmo_user.user_id\n" +
                 " WHERE username = ?);";
         try{
-            int rowsAffected = jdbcTemplate.update(sqlFrom, transfer.getTransferAmount(), transfer.getFrom());
-            int rowsAffected2 = jdbcTemplate.update(sqlTo,transfer.getTransferAmount(), transfer.getTo());
+            int rowsAffected = jdbcTemplate.update(sqlFrom, transfer.getTransferAmount(), transfer.getUsernameFrom());
+            int rowsAffected2 = jdbcTemplate.update(sqlTo,transfer.getTransferAmount(), transfer.getUsernameTo());
             if(rowsAffected + rowsAffected2 < 2){
 //                throw new DaoException("Zero rows affected, expected at least one");
                 System.out.println("Zero or one row affected, expected at least two");
@@ -232,7 +246,7 @@ public class JdbcUserDao implements UserDao {
         }
         return newTransfer;
     }
-
+    //6
 //    public List<Transfer> userTransferList (int id){
 //        List <Transfer>
 //    }

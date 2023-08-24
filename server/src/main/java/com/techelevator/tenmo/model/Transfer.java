@@ -8,14 +8,15 @@ public class Transfer {
 
     
     private int transferId;
-    private Account account;
     @Min(value = 1, message = "The currentBid field must be greater than 0.")
     private BigDecimal transferAmount;
-    private String from;
-    private String to;
+    private int from;
+    private int to;
+    private String usernameFrom;
+    private String usernameTo;
 
 
-    public Transfer(int transferId, BigDecimal transferAmount, String from, String to) {
+    public Transfer(int transferId, BigDecimal transferAmount, int from, int to) {
         this.transferId = transferId;
         this.transferAmount = transferAmount;
         this.from = from;
@@ -42,20 +43,36 @@ public class Transfer {
         this.transferAmount = transferAmount;
     }
 
-    public String getFrom() {
+    public int getFrom() {
         return from;
     }
 
-    public void setFrom(String from) {
+    public void setFrom(int from) {
         this.from = from;
     }
 
-    public String getTo() {
+    public int getTo() {
         return to;
     }
 
-    public void setTo(String to) {
+    public void setTo(int to) {
         this.to = to;
+    }
+
+    public String getUsernameFrom() {
+        return usernameFrom;
+    }
+
+    public void setUsernameFrom(String usernameFrom) {
+        this.usernameFrom = usernameFrom;
+    }
+
+    public String getUsernameTo() {
+        return usernameTo;
+    }
+
+    public void setUsernameTo(String usernameTo) {
+        this.usernameTo = usernameTo;
     }
 
     @Override
@@ -63,8 +80,8 @@ public class Transfer {
         return "Transfer{" +
                 "transferId=" + transferId +
                 ", transferAmount=" + transferAmount +
-                ", from='" + from + '\'' +
-                ", to='" + to + '\'' +
+                ", from='" + usernameFrom + '\'' +
+                ", to='" + usernameTo + '\'' +
                 '}';
     }
 }

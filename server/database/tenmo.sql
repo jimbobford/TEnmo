@@ -1,6 +1,6 @@
 BEGIN TRANSACTION;
 
-DROP TABLE IF EXISTS tenmo_user, account, transfer;
+DROP TABLE IF EXISTS tenmo_user, account, status, transfer;
 
 DROP SEQUENCE IF EXISTS seq_user_id, seq_account_id, seq_transfer_id;
 
@@ -33,6 +33,12 @@ CREATE TABLE account (
 	CONSTRAINT FK_account_tenmo_user FOREIGN KEY (user_id) REFERENCES tenmo_user (user_id)
 );
 
+CREATE TABLE status (
+	status_id int NOT NULL,
+	status_name varchar NOT NULL,
+	CONSTRAINT PK_status PRIMARY KEY (status_id)
+);
+
 CREATE SEQUENCE seq_transfer_id
   INCREMENT BY 1
   START WITH 3001
@@ -41,11 +47,18 @@ CREATE SEQUENCE seq_transfer_id
 CREATE TABLE transfer (
 	transfer_id int NOT NULL DEFAULT nextval('seq_transfer_id'),
 	transfer_amount numeric(13, 2) NOT NULL,
-	from_username varchar NOT NULL,
-	to_username varchar NOT NULL,
+	from_user_id int NOT NULL,
+	to_user_id int NOT NULL,
+	date DATE NOT NULL DEFAULT current_date,
+	status int NOT NULL,
 	CONSTRAINT PK_transfer PRIMARY KEY (transfer_id),
-	CONSTRAINT FK_transfer_from FOREIGN KEY (from_username) REFERENCES tenmo_user (username),
-	CONSTRAINT FK_transfer_to FOREIGN KEY (to_username) REFERENCES tenmo_user (username)
-	);
+	CONSTRAINT FK_transfer_from FOREIGN KEY (from_user_id) REFERENCES tenmo_user (user_id),
+	CONSTRAINT FK_transfer_to FOREIGN KEY (to_user_id) REFERENCES tenmo_user (user_id),
+	CONSTRAINT FK_status FOREIGN KEY (status) REFERENCES status (status_id)
+);
+
+INSERT INTO status (status_id, status_name) VALUES (1,'Approved');
+INSERT INTO status (status_id, status_name) VALUES (2,'Pending');
+INSERT INTO status (status_id, status_name) VALUES (3,'Rejected');
 
 COMMIT;

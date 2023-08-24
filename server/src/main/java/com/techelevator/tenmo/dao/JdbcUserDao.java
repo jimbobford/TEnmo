@@ -19,7 +19,7 @@ import java.util.List;
 
 @Component
 public class JdbcUserDao implements UserDao {
-    private final String TRANSFER_SELECT = "SELECT transfer_id, transfer_amount, from_user_id, to_user_id FROM transfer ";
+    private final String TRANSFER_SELECT = "SELECT transfer_id, transfer_amount, from_user_id, to_user_id, date, status FROM transfer ";
     private JdbcTemplate jdbcTemplate;
 
     public JdbcUserDao(JdbcTemplate jdbcTemplate) {
@@ -146,10 +146,8 @@ public class JdbcUserDao implements UserDao {
         Transfer transfer = new Transfer();
         transfer.setTransferId(rs.getInt("transfer_id"));
         transfer.setTransferAmount(rs.getBigDecimal("transfer_amount"));
-        transfer.setFrom(rs.getInt(findIdByUsername(transfer.getUsernameFrom())));
-        transfer.setTo(rs.getInt(findIdByUsername(transfer.getUsernameTo())));
-        transfer.setUsernameFrom(findUsernameById(transfer.getFrom()));
-        transfer.setUsernameTo(findUsernameById(transfer.getTo()));
+        transfer.setFrom(rs.getInt("from_user_id"));
+        transfer.setTo(rs.getInt("to_user_id"));
         return transfer;
     }
 
@@ -176,7 +174,7 @@ public class JdbcUserDao implements UserDao {
         Transfer newTransfer = null;
         int newTransferId = 0;
         String sql = "INSERT INTO transfer (transfer_amount, from_user_id, to_user_id, status) " +
-                "VALUES (?, (SELECT user_id FROM tenmo_user WHERE username = ?), (SELECT user_id FROM tenmo_user WHERE username = ?), 1) " +
+                "VALUES (?, (SELECT user_id FROM tenmo_user WHERE username = ?), (SELECT user_id FROM tenmo_user WHERE username = ?), ?) " +
                 "RETURNING transfer_id";
         if(transfer.getUsernameFrom().equals(transfer.getUsernameTo())) {
             throw new DataIntegrityViolationException("Please select a new person to receive money.");
@@ -196,7 +194,7 @@ public class JdbcUserDao implements UserDao {
 
         try {
             newTransferId = jdbcTemplate.queryForObject(sql,int.class, transfer.getTransferAmount(), transfer.getUsernameFrom(),
-                    transfer.getUsernameTo());
+                    transfer.getUsernameTo(), 1);
 
         } catch (CannotGetJdbcConnectionException e) {
             System.out.println ("Unable to connect to server or database");
@@ -247,7 +245,18 @@ public class JdbcUserDao implements UserDao {
         return newTransfer;
     }
     //6
-//    public List<Transfer> userTransferList (int id){
-//        List <Transfer>
-//    }
+    public List<Transfer> userTransferList (String username){
+        List <Transfer> activityList = new ArrayList<>();
+        String sql = TRANSFER_SELECT +
+                "WHERE from_user_id = (SELECT user_id FROM tenmo_user WHERE username = ?) " +
+                "OR to_user_id = (SELECT user_id FROM tenmo_user WHERE username = ?);";
+
+        SqlRowSet results = jdbcTemplate.queryForRowSet(sql, username, username );
+        while(results.next()) {
+            Transfer transfer = mapRowToTransfer(results);
+            activityList.add(transfer);
+        }
+        return activityList;
+
+    }
 }

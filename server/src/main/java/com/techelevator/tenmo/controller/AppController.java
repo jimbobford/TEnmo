@@ -38,6 +38,11 @@ public class AppController {
     }
 
 
+    @RequestMapping(path="/activity/{username}", method = RequestMethod.GET)
+    public List<Transfer> activityList (@PathVariable String username){
+        return userDao.userTransferList(username);
+    }
+
 
 
 

@@ -246,7 +246,7 @@ public class JdbcUserDao implements UserDao {
         }
         return newTransfer;
     }
-    //6
+    //6f
 //    public List<Transfer> userTransferList (int id){
 //        List <Transfer>
 //    }

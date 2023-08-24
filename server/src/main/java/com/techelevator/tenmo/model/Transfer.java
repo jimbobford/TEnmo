@@ -2,6 +2,7 @@ package com.techelevator.tenmo.model;
 
 import com.techelevator.tenmo.dao.JdbcUserDao;
 import com.techelevator.tenmo.dao.UserDao;
+import org.springframework.beans.factory.annotation.Autowired;
 
 
 import javax.validation.constraints.Max;
@@ -16,10 +17,8 @@ public class Transfer {
     @Min(value = 1, message = "The field must be greater than 0.")
     private BigDecimal transferAmount;
     private int from;
-    private int to;
-
-    private UserDao userDao;
     private String usernameFrom;
+    private int to;
     private String usernameTo;
 
 
@@ -28,6 +27,8 @@ public class Transfer {
         this.transferAmount = transferAmount;
         this.from = from;
         this.to = to;
+        this.usernameFrom = getUsernameFrom();
+        this.usernameTo = getUsernameTo();
     }
 
     public Transfer() {
@@ -71,7 +72,7 @@ public class Transfer {
     }
 
     public void setUsernameFrom(String usernameFrom) {
-        this.usernameFrom = userDao.findUsernameById(getFrom());
+        this.usernameFrom = usernameFrom;
     }
 
     public String getUsernameTo() {
@@ -79,7 +80,7 @@ public class Transfer {
     }
 
     public void setUsernameTo(String usernameTo) {
-        this.usernameTo = userDao.findUsernameById(getFrom());
+        this.usernameTo = usernameTo;
     }
 
 

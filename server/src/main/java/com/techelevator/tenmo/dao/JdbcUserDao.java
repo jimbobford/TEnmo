@@ -251,12 +251,57 @@ public class JdbcUserDao implements UserDao {
                 "WHERE from_user_id = (SELECT user_id FROM tenmo_user WHERE username = ?) " +
                 "OR to_user_id = (SELECT user_id FROM tenmo_user WHERE username = ?);";
 
+
+        // result does not have usernames yet
+
         SqlRowSet results = jdbcTemplate.queryForRowSet(sql, username, username );
         while(results.next()) {
             Transfer transfer = mapRowToTransfer(results);
             activityList.add(transfer);
+
+            setUsername(transfer);
+
         }
         return activityList;
 
     }
+
+    public Transfer userTransferById(String name, int id){
+        Transfer transfer = null;
+        String sql = "SELECT transfer_id, transfer_amount, from_user_id, to_user_id " +
+                "FROM transfer " +
+                "JOIN tenmo_user ON tenmo_user.user_id = transfer.from_user_id " +
+                "WHERE (from_user_id = (SELECT user_id FROM tenmo_user WHERE username = ?) " +
+                "OR to_user_id = (SELECT user_id FROM tenmo_user WHERE username = ?)) AND transfer_id = ?;";
+        SqlRowSet results = jdbcTemplate.queryForRowSet(sql, name, name, id);
+        if(results.next()){
+            transfer = mapRowToTransfer(results);
+            setUsername(transfer);
+        }
+        return transfer;
+
+    }
+
+    public void setUsername (Transfer transfer){
+        String sqlFrom = "SELECT username FROM tenmo_user WHERE user_id= ?";
+
+        SqlRowSet result = jdbcTemplate.queryForRowSet(sqlFrom, transfer.getFrom());
+        if(result.next()){
+            Username usernameFrom = mapRowToUsername(result);
+            String name = String.valueOf(usernameFrom);
+            String usernameString = name.substring(name.indexOf("'")+1, name.length()-2);
+            transfer.setUsernameFrom(usernameString);
+        }
+
+        String sqlTo = "SELECT username FROM tenmo_user WHERE user_id= ?";
+
+        SqlRowSet resultTo = jdbcTemplate.queryForRowSet(sqlTo, transfer.getTo());
+        if(resultTo.next()){
+            Username usernameTo = mapRowToUsername(resultTo);
+            String name = String.valueOf(usernameTo);
+            String usernameString = name.substring(name.indexOf("'")+1, name.length()-2);
+            transfer.setUsernameTo(String.valueOf(usernameString));
+        }
+    }
+
 }

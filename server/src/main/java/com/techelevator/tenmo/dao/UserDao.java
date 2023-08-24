@@ -29,4 +29,6 @@ public interface UserDao {
     Transfer createTransfer(Transfer transfer);
 
     List<Transfer> userTransferList (String username);
+
+    Transfer userTransferById(String name, int id);
 }

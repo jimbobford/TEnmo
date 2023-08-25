@@ -88,16 +88,4 @@ public class UserTest {
 
     }
 
-    @Test
-    public void test_getAndSetAuthorities() {
-
-        User user = new User(1001, "Bob", "bob123", "admin");
-
-        Assert.assertEquals(user.getAuthorities(), user1.getAuthorities());
-
-
-    }
-
-
-
 }

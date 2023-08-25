@@ -20,6 +20,8 @@ public class Transfer {
     @JsonIgnore
     private int to;
     private String usernameTo;
+    @JsonIgnore
+    private int status;
 
 
     public Transfer(int transferId, BigDecimal transferAmount, int from, int to) {
@@ -84,7 +86,13 @@ public class Transfer {
         this.usernameTo = usernameTo;
     }
 
+    public int getStatus() {
+        return status;
+    }
 
+    public void setStatus(int status) {
+        this.status = status;
+    }
 
     @Override
     public String toString() {

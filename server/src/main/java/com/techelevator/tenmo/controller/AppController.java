@@ -10,6 +10,7 @@ import com.techelevator.tenmo.model.Username;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -39,8 +40,8 @@ public class AppController {
 
     @ResponseStatus(HttpStatus.CREATED)
     @RequestMapping(path= "/transfer", method = RequestMethod.POST)
-    public Transfer transferMoney (@RequestBody Transfer transfer){
-        return transferDao.createTransfer(transfer);
+    public Transfer transferMoney (Principal principal, @RequestBody Transfer transfer){
+        return transferDao.createTransfer(principal.getName(), transfer);
     }
 
 
@@ -54,9 +55,17 @@ public class AppController {
         return transferDao.userTransferById(principal.getName(), id);
     }
 
+    @ResponseStatus(HttpStatus.CREATED)
+    @RequestMapping(path="/request", method = RequestMethod.POST)
+    public Transfer requestMoney(Principal principal, @RequestBody Transfer transfer) {
+        return transferDao.requestTransfer(principal.getName(), transfer);
+    }
 
-
-
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @RequestMapping(path="/request", method = RequestMethod.PUT)
+    public Transfer requestPending(Principal principal, @RequestBody Transfer transfer) {
+        return transferDao.updateStatus(principal.getName(), transfer);
+    }
 
 
 }

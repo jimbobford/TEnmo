@@ -41,12 +41,9 @@ public class JdbcTransferDao implements TransferDao {
         return transfer;
     }
 
-    public Transfer createTransfer(Transfer transfer) {
-        //int accountTo = transfer.getTo();
-        Account accountFrom = null;
+    public Transfer createTransfer(String name, Transfer transfer) {
         Transfer newTransfer = null;
         int newTransferId = 0;
-//        accountFrom.setUsername(transfer.getUsernameFrom());
         String sql = "INSERT INTO transfer (transfer_amount, from_user_id, to_user_id, status) " +
                 "VALUES (?, (SELECT user_id FROM tenmo_user WHERE username = ?), (SELECT user_id FROM tenmo_user WHERE username = ?), ?) " +
                 "RETURNING transfer_id";
@@ -54,9 +51,26 @@ public class JdbcTransferDao implements TransferDao {
             throw new DataIntegrityViolationException("Please select a new person to receive money.");
         }
 
-//        if(transfer.getTransferAmount().compareTo(accountFrom.getBalance())==1) {
-//            throw new DataIntegrityViolationException("Insufficient funds.");
-//        }
+        if(!transfer.getUsernameFrom().equals(name)) {
+            throw new DataIntegrityViolationException("You can't send money from another user to yourself.");
+        }
+
+        String sql1 = "SELECT balance FROM account \n" +
+                "WHERE user_id = (SELECT user_id FROM tenmo_user WHERE username = ?);";
+
+        SqlRowSet balanceResult = jdbcTemplate.queryForRowSet(sql1, transfer.getUsernameFrom());
+        BigDecimal currentBalance = new BigDecimal("0");
+
+        if(balanceResult.next()) {
+            currentBalance = balanceResult.getBigDecimal("balance");
+        }
+
+        BigDecimal trialBalance = currentBalance.subtract(transfer.getTransferAmount());
+        BigDecimal zeroBd = new BigDecimal("0");
+
+        if(trialBalance.compareTo(zeroBd) == -1) {
+            throw new DataIntegrityViolationException("Insufficient funds.");
+        }
 
         if(transfer.getTransferAmount().compareTo(BigDecimal.ZERO)== 0) {
             throw new DataIntegrityViolationException("Can't send $0.00.");
@@ -80,13 +94,28 @@ public class JdbcTransferDao implements TransferDao {
 
         transferUpdate(newTransferId, newTransfer, transfer);
 
-
-
         return newTransfer;
     }
 
 
     public Transfer transferUpdate(int newTransferId, Transfer newTransfer, Transfer transfer){
+        String sql1 = "SELECT balance FROM account \n" +
+                "WHERE user_id = (SELECT user_id FROM tenmo_user WHERE username = ?);";
+
+        SqlRowSet balanceResult = jdbcTemplate.queryForRowSet(sql1, transfer.getUsernameFrom());
+        BigDecimal currentBalance = new BigDecimal("0");
+
+        if(balanceResult.next()) {
+            currentBalance = balanceResult.getBigDecimal("balance");
+        }
+
+        BigDecimal trialBalance = currentBalance.subtract(transfer.getTransferAmount());
+        BigDecimal zeroBd = new BigDecimal("0");
+
+        if(trialBalance.compareTo(zeroBd) == -1) {
+            throw new DataIntegrityViolationException("Insufficient funds.");
+        }
+
         String sqlFrom = "UPDATE account\n" +
                 "SET balance = balance - ?\n" +
                 "WHERE account_id =\n" +
@@ -118,6 +147,78 @@ public class JdbcTransferDao implements TransferDao {
             System.out.println("There's a problem updating the accounts");
         }
         return newTransfer;
+    }
+
+    public Transfer requestTransfer(String name, Transfer transfer) {
+        Transfer newTransfer = null;
+        int newTransferId = 0;
+        String sql = "INSERT INTO transfer (transfer_amount, from_user_id, to_user_id, status) " +
+                "VALUES (?, (SELECT user_id FROM tenmo_user WHERE username = ?), (SELECT user_id FROM tenmo_user WHERE username = ?), ?) " +
+                "RETURNING transfer_id";
+        if(transfer.getUsernameFrom().equals(transfer.getUsernameTo())) {
+            throw new DataIntegrityViolationException("Please select a new person to request money from.");
+        }
+
+        if(!transfer.getUsernameTo().equals(name)) {
+            throw new DataIntegrityViolationException("You can't send money to another user.");
+        }
+
+        if(transfer.getTransferAmount().compareTo(BigDecimal.ZERO)== 0) {
+            throw new DataIntegrityViolationException("Can't send $0.00.");
+        }
+
+        if(transfer.getTransferAmount().compareTo(BigDecimal.ZERO)== -1) {
+            throw new DataIntegrityViolationException("Can't send negative amount.");
+        }
+
+        try {
+            newTransferId = jdbcTemplate.queryForObject(sql,int.class, transfer.getTransferAmount(), transfer.getUsernameFrom(),
+                    transfer.getUsernameTo(), 2);
+            newTransfer = getTransferById(newTransferId);
+        } catch (CannotGetJdbcConnectionException e) {
+            System.out.println ("Unable to connect to server or database");
+        } catch (DataIntegrityViolationException e) {
+            System.out.println("Data integrity violation");
+        } catch (NullPointerException e){
+            System.out.println("There's a problem");
+        }
+
+        return newTransfer;
+    }
+
+
+    public Transfer updateStatus(String name, Transfer transfer) {
+        Transfer updatedTransfer = null;
+
+        String sql = "UPDATE transfer SET status = ? WHERE transfer_id = ? AND to_user_id = " +
+                "(SELECT user_id FROM tenmo_user WHERE username = ?);";
+        try {
+            int numberOfRows = jdbcTemplate.update(sql, transfer.getTransferId(), name);
+
+            if (numberOfRows == 0) {
+                throw new DataIntegrityViolationException("Zero rows affected, expected at least one");
+            } else {
+                updatedTransfer = getTransferById(transfer.getTransferId());
+            }
+        } catch (CannotGetJdbcConnectionException e) {
+            throw new DataIntegrityViolationException("Unable to connect to server or database", e);
+        } catch (DataIntegrityViolationException e) {
+            throw new DataIntegrityViolationException("Data integrity violation", e);
+        }
+
+        String sql1 = "SELECT status FROM transfer \n" +
+                "WHERE transfer_id = ?;";
+        SqlRowSet statusResult = jdbcTemplate.queryForRowSet(sql1, transfer.getTransferId());
+
+        int status = 0;
+        if(statusResult.next()) {
+           status = updatedTransfer.getStatus();
+        }
+        if(status == 1) {
+            transferUpdate(transfer.getTransferId(), updatedTransfer, transfer);
+        }
+
+        return updatedTransfer;
     }
 
     public List<Transfer> userTransferList (String username){
@@ -152,6 +253,10 @@ public class JdbcTransferDao implements TransferDao {
         if(results.next()){
             transfer = mapRowToTransfer(results);
             setUsername(transfer);
+        }
+
+        if(transfer == null) {
+            throw new DataIntegrityViolationException("This id is not one of your transactions.");
         }
         return transfer;
 

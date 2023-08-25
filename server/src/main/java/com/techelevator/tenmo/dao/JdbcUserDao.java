@@ -170,9 +170,11 @@ public class JdbcUserDao implements UserDao {
     }
 
     public Transfer createTransfer(Transfer transfer) {
-        Account account = null;
+        //int accountTo = transfer.getTo();
+        Account accountFrom = null;
         Transfer newTransfer = null;
         int newTransferId = 0;
+        accountFrom.setUsername(transfer.getUsernameFrom());
         String sql = "INSERT INTO transfer (transfer_amount, from_user_id, to_user_id, status) " +
                 "VALUES (?, (SELECT user_id FROM tenmo_user WHERE username = ?), (SELECT user_id FROM tenmo_user WHERE username = ?), ?) " +
                 "RETURNING transfer_id";
@@ -180,9 +182,9 @@ public class JdbcUserDao implements UserDao {
             throw new DataIntegrityViolationException("Please select a new person to receive money.");
         }
 
-//        if(transfer.getTransferAmount().compareTo(account.getBalance())==1) {
-//            throw new DataIntegrityViolationException("Insufficient funds.");
-//        }
+        if(transfer.getTransferAmount().compareTo(accountFrom.getBalance())==1) {
+            throw new DataIntegrityViolationException("Insufficient funds.");
+        }
 
         if(transfer.getTransferAmount().compareTo(BigDecimal.ZERO)== 0) {
             throw new DataIntegrityViolationException("Can't send $0.00.");

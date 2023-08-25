@@ -1,6 +1,8 @@
 package com.techelevator.tenmo.model;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import java.math.BigDecimal;
@@ -12,8 +14,10 @@ public class Transfer {
     private int transferId;
     @Min(value = 1, message = "The field must be greater than 0.")
     private BigDecimal transferAmount;
+    @JsonIgnore
     private int from;
     private String usernameFrom;
+    @JsonIgnore
     private int to;
     private String usernameTo;
 

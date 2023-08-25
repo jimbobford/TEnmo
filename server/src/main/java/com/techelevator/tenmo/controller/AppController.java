@@ -38,6 +38,16 @@ public class AppController {
     }
 
 
+    @RequestMapping(path="/activity", method = RequestMethod.GET)
+    public List<Transfer> activityList (Principal principal){
+        return userDao.userTransferList(principal.getName());
+    }
+
+    @RequestMapping(path="/activity/{id}", method = RequestMethod.GET)
+    public Transfer activityList (Principal principal, @PathVariable int id){
+        return userDao.userTransferById(principal.getName(), id);
+    }
+
 
 
 

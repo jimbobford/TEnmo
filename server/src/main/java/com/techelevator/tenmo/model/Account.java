@@ -9,6 +9,9 @@ public class Account {
     private BigDecimal balance;
 
 
+    public Account(){}
+
+
     public String getUsername() {
         return username;
     }

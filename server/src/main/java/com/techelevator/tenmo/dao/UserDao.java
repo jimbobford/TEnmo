@@ -24,11 +24,5 @@ public interface UserDao {
 
     Account retrieveBalance(String username);
 
-    Transfer getTransferById(int transferId);
 
-    Transfer createTransfer(Transfer transfer);
-
-    List<Transfer> userTransferList (String username);
-
-    Transfer userTransferById(String name, int id);
 }

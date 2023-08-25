@@ -1,9 +1,5 @@
 package com.techelevator.tenmo.model;
 
-import com.techelevator.tenmo.dao.JdbcUserDao;
-import com.techelevator.tenmo.dao.UserDao;
-import org.springframework.beans.factory.annotation.Autowired;
-
 
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -50,6 +46,7 @@ public class Transfer {
     public void setTransferAmount(BigDecimal transferAmount) {
         this.transferAmount = transferAmount;
     }
+
 
     public int getFrom() {
         return from;

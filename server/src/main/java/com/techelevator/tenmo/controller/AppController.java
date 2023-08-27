@@ -3,10 +3,7 @@ package com.techelevator.tenmo.controller;
 import com.techelevator.tenmo.dao.AccountDao;
 import com.techelevator.tenmo.dao.TransferDao;
 import com.techelevator.tenmo.dao.UserDao;
-import com.techelevator.tenmo.model.Account;
-import com.techelevator.tenmo.model.Transfer;
-import com.techelevator.tenmo.model.User;
-import com.techelevator.tenmo.model.Username;
+import com.techelevator.tenmo.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -63,8 +60,13 @@ public class AppController {
 
     @ResponseStatus(HttpStatus.ACCEPTED)
     @RequestMapping(path="/request", method = RequestMethod.PUT)
-    public Transfer requestPending(Principal principal, @RequestBody Transfer transfer) {
-        return transferDao.updateStatus(principal.getName(), transfer);
+    public Transfer requestPending(Principal principal, @RequestBody TransferUpdate transferUpdate, Transfer transfer) {
+        return transferDao.updateStatus(principal.getName(), transferUpdate, transfer);
+    }
+
+    @RequestMapping(path= "/requests", method = RequestMethod.GET)
+    public List <Transfer> pendingActivityList (Principal principal){
+        return transferDao.pendingList(principal.getName());
     }
 
 

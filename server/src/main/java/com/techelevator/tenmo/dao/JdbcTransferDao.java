@@ -1,8 +1,6 @@
 package com.techelevator.tenmo.dao;
 
-import com.techelevator.tenmo.model.Account;
-import com.techelevator.tenmo.model.Transfer;
-import com.techelevator.tenmo.model.Username;
+import com.techelevator.tenmo.model.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -175,6 +173,8 @@ public class JdbcTransferDao implements TransferDao {
             newTransferId = jdbcTemplate.queryForObject(sql,int.class, transfer.getTransferAmount(), transfer.getUsernameFrom(),
                     transfer.getUsernameTo(), 2);
             newTransfer = getTransferById(newTransferId);
+
+            setUsername(newTransfer);
         } catch (CannotGetJdbcConnectionException e) {
             System.out.println ("Unable to connect to server or database");
         } catch (DataIntegrityViolationException e) {
@@ -187,18 +187,18 @@ public class JdbcTransferDao implements TransferDao {
     }
 
 
-    public Transfer updateStatus(String name, Transfer transfer) {
-        Transfer updatedTransfer = null;
+    public Transfer updateStatus(String name, TransferUpdate transferUpdate, Transfer transfer) {
+        Transfer newTransfer = null;
 
         String sql = "UPDATE transfer SET status = ? WHERE transfer_id = ? AND to_user_id = " +
                 "(SELECT user_id FROM tenmo_user WHERE username = ?);";
         try {
-            int numberOfRows = jdbcTemplate.update(sql, transfer.getTransferId(), name);
+            int numberOfRows = jdbcTemplate.update(sql, transferUpdate.getStatus(), transferUpdate.getTransferId(), name);
 
             if (numberOfRows == 0) {
                 throw new DataIntegrityViolationException("Zero rows affected, expected at least one");
             } else {
-                updatedTransfer = getTransferById(transfer.getTransferId());
+                newTransfer = getTransferById(transferUpdate.getTransferId());
             }
         } catch (CannotGetJdbcConnectionException e) {
             throw new DataIntegrityViolationException("Unable to connect to server or database", e);
@@ -208,18 +208,72 @@ public class JdbcTransferDao implements TransferDao {
 
         String sql1 = "SELECT status FROM transfer \n" +
                 "WHERE transfer_id = ?;";
-        SqlRowSet statusResult = jdbcTemplate.queryForRowSet(sql1, transfer.getTransferId());
+        SqlRowSet statusResult = jdbcTemplate.queryForRowSet(sql1, transferUpdate.getTransferId());
+
+        // need to call our getTransferbyId method, and give it the id of this transfer.
+        newTransfer = getTransferById(transferUpdate.getTransferId());
+
+        // the transferObject that we get back, we can pass to the transferUpdate update method
+
+        setUsername(newTransfer);
 
         int status = 0;
         if(statusResult.next()) {
-           status = updatedTransfer.getStatus();
+           status = transferUpdate.getStatus();
         }
+        System.out.println(status);
         if(status == 1) {
-            transferUpdate(transfer.getTransferId(), updatedTransfer, transfer);
-        }
+            String sql2 = "SELECT balance FROM account \n" +
+                    "WHERE user_id = (SELECT user_id FROM tenmo_user WHERE username = ?);";
 
-        return updatedTransfer;
+            SqlRowSet balanceResult = jdbcTemplate.queryForRowSet(sql2, newTransfer.getUsernameFrom());
+            BigDecimal currentBalance = new BigDecimal("0");
+
+            if (balanceResult.next()) {
+                currentBalance = balanceResult.getBigDecimal("balance");
+            }
+
+            BigDecimal trialBalance = currentBalance.subtract(newTransfer.getTransferAmount());
+            BigDecimal zeroBd = new BigDecimal("0");
+
+            if (trialBalance.compareTo(zeroBd) == -1) {
+                throw new DataIntegrityViolationException("Insufficient funds.");
+            }
+
+            String sqlFrom = "UPDATE account\n" +
+                    "SET balance = balance - ?\n" +
+                    "WHERE account_id =\n" +
+                    "(SELECT account_id FROM account \n" +
+                    " JOIN tenmo_user ON account.user_id = tenmo_user.user_id\n" +
+                    " WHERE username = ?);";
+            String sqlTo = "UPDATE account\n" +
+                    "SET balance = balance + ?\n" +
+                    "WHERE account_id =\n" +
+                    "(SELECT account_id FROM account \n" +
+                    " JOIN tenmo_user ON account.user_id = tenmo_user.user_id\n" +
+                    " WHERE username = ?);";
+            try {
+                int rowsAffected = jdbcTemplate.update(sqlFrom, newTransfer.getTransferAmount(), newTransfer.getUsernameFrom());
+                int rowsAffected2 = jdbcTemplate.update(sqlTo, newTransfer.getTransferAmount(), newTransfer.getUsernameTo());
+                if (rowsAffected + rowsAffected2 < 2) {
+//                throw new DaoException("Zero rows affected, expected at least one");
+                    System.out.println("Zero or one row affected, expected at least two");
+                }
+            } catch (CannotGetJdbcConnectionException e) {
+//            throw new DaoException("Unable to connect to server or database", e);
+                System.out.println("Unable to connect to server or database");
+            } catch (DataIntegrityViolationException e) {
+//            throw new DaoException("Data integrity violation", e);
+                System.out.println("Unable to connect to server or database");
+            } catch (NullPointerException e) {
+                System.out.println("There's a problem updating the accounts");
+            }
+        }
+        return newTransfer;
+
     }
+
+
 
     public List<Transfer> userTransferList (String username){
         List <Transfer> activityList = new ArrayList<>();
@@ -236,6 +290,7 @@ public class JdbcTransferDao implements TransferDao {
             activityList.add(transfer);
 
             setUsername(transfer);
+//            setStatus(transfer);
 
         }
         return activityList;
@@ -284,9 +339,47 @@ public class JdbcTransferDao implements TransferDao {
         }
     }
 
+    public List<Transfer> pendingList (String username){
+        List <Transfer> pendingList = new ArrayList<>();
+        String sql = TRANSFER_SELECT +
+                "WHERE from_user_id = (SELECT user_id FROM tenmo_user WHERE username = ?) " +
+                "OR to_user_id = (SELECT user_id FROM tenmo_user WHERE username = ?) AND status = 2;";
+
+
+        // result does not have usernames yet
+
+        SqlRowSet results = jdbcTemplate.queryForRowSet(sql, username, username );
+        while(results.next()) {
+            Transfer transfer = mapRowToTransfer(results);
+            pendingList.add(transfer);
+
+            setUsername(transfer);
+
+        }
+        return pendingList;
+
+    }
+
+//    public void setStatus (Transfer transfer){
+//        String sql = "SELECT status_name FROM status " +
+//                "JOIN transfer ON transfer.status = status.status_id " +
+//                "WHERE transfer_id = ?";
+//
+//        SqlRowSet result = jdbcTemplate.queryForRowSet(sql, transfer.getTransferId());
+//        if(result.next()){
+//            Status newStatus = mapRowToStatus(result);
+//            String status = String.valueOf(newStatus);
+//            newStatus.setStatus(status);
+//        }
+//    }
+
+
+
 
     private Transfer mapRowToTransfer(SqlRowSet rs){
         Transfer transfer = new Transfer();
+        transfer.setStatusId(rs.getInt("status"));
+        transfer.setDate(rs.getDate("date").toLocalDate());
         transfer.setTransferId(rs.getInt("transfer_id"));
         transfer.setTransferAmount(rs.getBigDecimal("transfer_amount"));
         transfer.setFrom(rs.getInt("from_user_id"));
@@ -298,5 +391,12 @@ public class JdbcTransferDao implements TransferDao {
         username.setUsername(rs.getString("username"));
         return username;
     }
+
+//    private Status mapRowToStatus(SqlRowSet rs){
+//        Status status = new Status();
+//        status.setStatus(rs.getString("status_name"));
+//        return status;
+//    }
+
 }
 

@@ -12,6 +12,7 @@ public class Transfer {
 
     
     private int transferId;
+    private LocalDate date;
     @Min(value = 1, message = "The field must be greater than 0.")
     private BigDecimal transferAmount;
     @JsonIgnore
@@ -20,8 +21,8 @@ public class Transfer {
     @JsonIgnore
     private int to;
     private String usernameTo;
-    @JsonIgnore
-    private int status;
+//    private String status;
+    private int statusId;
 
 
     public Transfer(int transferId, BigDecimal transferAmount, int from, int to) {
@@ -86,12 +87,28 @@ public class Transfer {
         this.usernameTo = usernameTo;
     }
 
-    public int getStatus() {
-        return status;
+//    public String getStatus() {
+//        return status;
+//    }
+//
+//    public void setStatus(String status) {
+//        this.status = status;
+//    }
+
+    public int getStatusId() {
+        return statusId;
     }
 
-    public void setStatus(int status) {
-        this.status = status;
+    public void setStatusId(int statusId) {
+        this.statusId = statusId;
+    }
+
+    public LocalDate getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
     }
 
     @Override
